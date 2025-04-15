@@ -1,0 +1,25 @@
+{
+    "files.associations": {
+        "buf.C": "cpp",
+        "joinHT.C": "cpp",
+        "select.C": "cpp",
+        "heapfile.C": "cpp",
+        "join.C": "cpp",
+        "insert.C": "cpp",
+        "delete.C": "cpp",
+        "catalog.C": "cpp",
+        "sort.C": "cpp",
+        "create.C": "cpp",
+        "dbcreate.C": "cpp",
+        "interp.C": "cpp",
+        "load.C": "cpp",
+        "minirel.C": "cpp",
+        "page.C": "cpp",
+        "partition.C": "cpp",
+        "print.C": "cpp",
+        "error.C": "cpp",
+        "db.C": "cpp",
+        "bufHash.C": "cpp",
+        "dbdestroy.C": "cpp"
+    }
+}
