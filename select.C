@@ -92,7 +92,15 @@ For each record found in the source table:
 	Status status;
 	HeapFileScan*  hfs;
 	hfs = new HeapFileScan(projNames[0].relName, status);
-	Record* tempRec = new Record();
+	if (status != OK) {
+        return status;
+    }
+
+	//Record* tempRec = new Record();
+    char* tempData = new char[reclen];
+    Record* tempRec = new Record();
+    tempRec->data = tempData;
+    tempRec->length = reclen;
 
 
 	//You are writing the resulting rows of your SELECT query 
@@ -101,6 +109,11 @@ For each record found in the source table:
 	Status status2;
 	InsertFileScan* ins;
 	ins = new InsertFileScan(projNames[0].relName, status2);
+	if (status2 != OK) {
+        delete hfs;
+        delete[] tempData;
+        return status2;
+    }
 	
 
 	//2, check if where clause is null
@@ -117,11 +130,26 @@ For each record found in the source table:
 			This ensures that when you apply the WHERE condition, you’re comparing the right types.
 
 		//4. once converted we can actualy scan using startScan
-
-
-``
-		
 		*/
+		if (attrDesc->attrType == INTEGER) {
+			int value = atoi(filter);
+			status = hfs->startScan(attrDesc->attrOffset, attrDesc->attrLen, 
+								INTEGER, (char*)&value, op);
+		}
+		else if (attrDesc->attrType == FLOAT) {
+			float value = atof(filter);
+			status = hfs->startScan(attrDesc->attrOffset, attrDesc->attrLen, 
+								FLOAT, (char*)&value, op);
+		}
+		else if (attrDesc->attrType == STRING) {
+			status = hfs->startScan(attrDesc->attrOffset, attrDesc->attrLen, 
+								STRING, filter, op);
+		}
+		else {
+			// Unknown type what to return??
+			status = BADFILE;
+    }
+
 		//perform selection
 		//for each tuple
 			//process row satisfies select condition (using ScanNext?)
@@ -134,8 +162,46 @@ For each record found in the source table:
 		//start scan with nulld to scan everything
 		
 		status = hfs->startScan(0, 0, STRING, NULL, EQ);
+		if (status != OK) {
+			delete hfs;
+			delete ins;
+			delete[] tempData;
+			delete tempRec;
+			return status;
+		}
 
-		
+		//record handling
+		/*
+		1)Copy the record data to the temporary record
+		2)Insert this temporary record into the output/result table */
+
+		RID rid;
+		Record rec;
+
+		while ((status=hfs->scanNext(rid)) == OK) {
+			status = hfs->getRecord(rec);
+			if (status != OK) break;
+
+			memset(tempData, 0, reclen);
+
+			for (int i = 0; i < projCnt; i++) {
+				memcpy(tempData + projNames[i].attrOffset, 
+					  (char*)rec.data + projNames[i].attrOffset,
+					  projNames[i].attrLen);
+			}
+
+			RID outrid;
+			status = ins->insertRecord(*tempRec, outrid);
+			if (status != OK) break;
+		}
+
+		    // finish and ret
+			delete hfs;
+			delete ins;
+			delete[] tempData;
+			delete tempRec;
+			return (status == FILEEOF) ? OK : status;
+
 	}
     cout << "Doing HeapFileScan Selection using ScanSelect()" << endl;
 
