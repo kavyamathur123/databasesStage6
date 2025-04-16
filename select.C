@@ -12,15 +12,11 @@ const Status ScanSelect(const string & result,
 			const char *filter,
 			const int reclen);
 
-/*
-
-
-
-+ Make sure to give ScanSelect the proper input
-+ To go from attrInfo to attrDesc, need to consult the catalog (attrCat and relCat,
+/* Make sure to give ScanSelect the proper input to go from attrInfo to attrDesc, need to consult the catalog (attrCat and relCat,
 global variables)
+	○ relcat: one tuple for each relation (including relcat): relName, attrCnt
+	○ attrcat: one tuple for each attribute of every relation: relName, attrName, attrOffset, attrType, attrLen
  * Selects records from the specified relation.
- *
  * Returns:
  * 	OK on success
  * 	an error code otherwise
@@ -28,23 +24,45 @@ global variables)
 
 const Status QU_Select(const string & result, 
 		       const int projCnt, 
-		       const attrInfo projNames[],
+		       const attrInfo projNames[], 
 		       const attrInfo *attr, 
 		       const Operator op, 
 		       const char *attrValue)
 {
-//parse first 
+	//convert attrInfo to AttrDesc
+	AttrDesc projDescs[projCnt];
+	for (int i = 0; i < projCnt; i++) {
+    	Status status = attrCat->getInfo(projNames[i].relName, projNames[i].attrName, projDescs[i]);
+	}	
 
+	//prepare  filter value (value to compare against in the WHERE clause)
+	const char* filter = nullptr;
+	int intVal;
+	float floatVal;
 
+	if (attr != NULL) {
+    	if (attr->attrType == INTEGER) {
+        	intVal = *((int*) attr->attrValue);
+        	filter = (char*)&intVal;
+    	}
+    	else if (attr->attrType == FLOAT) {
+       		floatVal = *((float*) attr->attrValue);
+        	filter = (char*)&floatVal;
+    	}
+   		else if (attr->attrType == STRING) {
+        	filter = (char*) attr->attrValue;
+    }
+}
 
-	//SELECT attr_list [INTO relname] FROM table_list [WHERE condition]
-	//performs a selection using HeapFileScan()
-	//projection should be done on the fly as each result tuple is being appended to the result table
-		//this means that as we process each tupe (row), that satisfies the select condition, we should immediately extract the required attributes (columns) and
-		//write the partial result to output
-	//string attrValue should be converted it to the proper type based on the type of attr
-	//use the atoi() function to convert a char* to an integer and atof() to convert it to a float
-	//if attr is NULL, an unconditional scan of the input table should be performed
+	//computes total output record length (reclen)
+	int reclen = 0;
+	for (int i = 0; i < projCnt; i++) {
+    	reclen += projDescs[i].attrLen;
+	}
+
+	//Select records from specified relations
+	AttrDesc* attrDesc; 
+	Status status = ScanSelect(result, projCnt, projDescs, attrDesc, op, filter, reclen);
 
    // Qu_Select sets up things and then calls ScanSelect to do the actual work
     cout << "Doing QU_Select " << endl;

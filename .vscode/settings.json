@@ -20,6 +20,8 @@
         "error.C": "cpp",
         "db.C": "cpp",
         "bufHash.C": "cpp",
-        "dbdestroy.C": "cpp"
+        "dbdestroy.C": "cpp",
+        "help.C": "cpp",
+        "__locale": "cpp"
     }
 }
