@@ -1,7 +1,6 @@
 #include "catalog.h"
 #include "query.h"
 
-
 /*
  * Inserts a record into the specified relation.
  *
@@ -23,10 +22,14 @@ in the relation, you might have to rearrange them before insertion. If no value 
 specified for an attribute, you should reject the insertion as Minirel does not
 implement NULLs.
 */
+
+
+
+*/
 RelDesc relDesc;
 //check to see if a relation exists
-status = relCat->getInfo(relation, relDesc);
 Status status;
+status = relCat->getInfo(relation, relDesc);
 if(status != OK)
 {
 	return status;
@@ -34,32 +37,55 @@ if(status != OK)
 
 //if the relation DOES exist, we want to create a new record with the info from attrlist
 Record record;
-record.length = relDesc.recordLength;
+RID rid;
+
+record.length = sizeof(relDesc);
 record.data = new char[record.length];
 if (!record.data) {
     return INSUFMEM;
 }
 
-//mow what we have record data initiliaze ir to 0 before we can apply attricutes
+//now what we have record data initiliaze it to 0 before we can apply attributes
 memset(record.data, 0, record.length);
 
-//set the attricbutes form attrList
+//set the attributes form attrList
+
+/*
+typedef struct {
+    char relName[MAXNAME];   // Name of the relation (e.g., "students")
+    char attrName[MAXNAME];  // Name of the attribute (e.g., "gpa")
+    int attrOffset;          // Offset in bytes within a record
+    int attrLen;             // Length of the attribute in bytes
+    Datatype attrType;       // Type (e.g., STRING, INTEGER, FLOAT)
+    int indexed;             // 1 if there's an index on it, 0 otherwise
+} AttrDesc;
+
+*/
+
+
 for(int i = 0; i< attrCnt; i++)
 {
+	//attribute holds attrList data now
 	AttrDesc attribute;
-	status = attrCat->getInfo(relation, attrList[i].attrName, attribute);
+	status = attrCat->getInfo(attrList[i].relName, attrList[i].attrName, attribute);
 
 	if (status != OK)
 	{
 		return status;
 	}
 
-	//attrubute holds attribute, but we need to know where it goes
-	    char* destination = (char*)record.data + attribute.attrOffset;
+	char* destination = (char*)record.data + attribute.attrOffset;
 
+	//now need to copy the attribute to our newly made record
+	memcpy(destination, attrList[i].attrValue, attribute.attrLen);
 }
 
+	//now our record is updated, so we just need to insert i
+	InsertFileScan*  ifs;
+	ifs = new InsertFileScan(RELCATNAME, status);
 
-return OK;
+	status = ifs->insertRecord(record, rid);
+
+	return OK;
 }
 

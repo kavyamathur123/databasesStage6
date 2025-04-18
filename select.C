@@ -42,7 +42,9 @@ const Status QU_Select(const string & result,
 
 	if (attr != NULL) {
     	if (attr->attrType == INTEGER) {
+			//Cast the void pointer to an int*, dereference it to get the actual int value
         	intVal = *((int*) attr->attrValue);
+			//Pass a char* pointer to this value for startScan()
         	filter = (char*)&intVal;
     	}
     	else if (attr->attrType == FLOAT) {
