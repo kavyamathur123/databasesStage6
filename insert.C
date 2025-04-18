@@ -14,78 +14,109 @@ const Status QU_Insert(
 	const int attrCnt, //Number of attributes (columns) in the record
 	const attrInfo attrList[]) //Array of attribute information 
 {
-/*
-Insert a tuple with the given attribute values (in attrList) in relation. The
-value of the attribute is supplied in the attrValue member of the attrInfo
-structure. Since the order of the attributes in attrList[] may not be the same as
-in the relation, you might have to rearrange them before insertion. If no value is
-specified for an attribute, you should reject the insertion as Minirel does not
-implement NULLs.
-*/
-
-
-
-*/
-RelDesc relDesc;
-//check to see if a relation exists
-Status status;
-status = relCat->getInfo(relation, relDesc);
-if(status != OK)
-{
-	return status;
-}
-
-//if the relation DOES exist, we want to create a new record with the info from attrlist
-Record record;
-RID rid;
-
-record.length = sizeof(relDesc);
-record.data = new char[record.length];
-if (!record.data) {
-    return INSUFMEM;
-}
-
-//now what we have record data initiliaze it to 0 before we can apply attributes
-memset(record.data, 0, record.length);
-
-//set the attributes form attrList
-
-/*
-typedef struct {
-    char relName[MAXNAME];   // Name of the relation (e.g., "students")
-    char attrName[MAXNAME];  // Name of the attribute (e.g., "gpa")
-    int attrOffset;          // Offset in bytes within a record
-    int attrLen;             // Length of the attribute in bytes
-    Datatype attrType;       // Type (e.g., STRING, INTEGER, FLOAT)
-    int indexed;             // 1 if there's an index on it, 0 otherwise
-} AttrDesc;
-
-*/
-
-
-for(int i = 0; i< attrCnt; i++)
-{
-	//attribute holds attrList data now
-	AttrDesc attribute;
-	status = attrCat->getInfo(attrList[i].relName, attrList[i].attrName, attribute);
-
-	if (status != OK)
-	{
-		return status;
-	}
-
-	char* destination = (char*)record.data + attribute.attrOffset;
-
-	//now need to copy the attribute to our newly made record
-	memcpy(destination, attrList[i].attrValue, attribute.attrLen);
-}
-
-	//now our record is updated, so we just need to insert i
-	InsertFileScan*  ifs;
-	ifs = new InsertFileScan(RELCATNAME, status);
-
-	status = ifs->insertRecord(record, rid);
-
-	return OK;
+    /*
+    Insert a tuple with the given attribute values (in attrList) in relation. The
+    value of the attribute is supplied in the attrValue member of the attrInfo
+    structure. Since the order of the attributes in attrList[] may not be the same as
+    in the relation, you might have to rearrange them before insertion. If no value is
+    specified for an attribute, you should reject the insertion as Minirel does not
+    implement NULLs.
+    */
+    
+    RelDesc relDesc;
+    //check to see if a relation exists
+    Status status;
+    status = relCat->getInfo(relation, relDesc);
+    if(status != OK)
+    {
+        return status;
+    }
+    
+    // Get all attributes for this relation to determine record size
+    int attrCount;
+    AttrDesc *attrs;
+    status = attrCat->getRelInfo(relation, attrCount, attrs);
+    if(status != OK)
+    {
+        return status;
+    }
+    
+    // check that we are given all attributes
+    bool allAttributesSpecified = true;
+    for(int i = 0; i < attrCount; i++)
+    {
+        bool attributeFound = false;
+        for(int j = 0; j < attrCnt; j++)
+        {
+            if(strcmp(attrs[i].attrName, attrList[j].attrName) == 0)
+            {
+                attributeFound = true;
+                break;
+            }
+        }
+        if(!attributeFound)
+        {
+            allAttributesSpecified = false;
+            break;
+        }
+    }
+    
+    if(!allAttributesSpecified)
+    {
+        delete[] attrs;
+        return ATTRTYPEMISMATCH; 
+    }
+    
+    //Create a new record 
+    Record record;
+	record.length = sizeof(relDesc);
+    record.data = new char[record.length];
+    if (!record.data) {
+        delete[] attrs;
+        return INSUFMEM;
+    }
+    
+	//set to 0
+    memset(record.data, 0, record.length);
+    
+    //Set the attributes from attrList
+    for(int i = 0; i < attrCnt; i++)
+    {
+        AttrDesc attribute;
+        status = attrCat->getInfo(relation, attrList[i].attrName, attribute);
+        
+        if (status != OK)
+        {
+            delete[] record.data;
+            delete[] attrs;
+            return status;
+        }
+        
+		//gets the right location to put it at bc of the attrOffset
+		char* destination = (char*)record.data + attribute.attrOffset;        
+        //Copy the attribute to our record
+        memcpy(destination, attrList[i].attrValue, attribute.attrLen);
+    }
+    
+    //Insert the record
+    RID rid;
+    InsertFileScan* ifs;
+    ifs = new InsertFileScan(relation, status);
+    
+    if(status != OK)
+    {
+		delete[] (char*)record.data;
+        delete[] attrs;
+        delete ifs;
+        return status;
+    }
+    
+    status = ifs->insertRecord(record, rid);
+    
+    delete[] record.data;
+    delete[] attrs;
+    delete ifs;
+    
+    return status;
 }
 
