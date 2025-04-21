@@ -1,122 +1,92 @@
 #include "catalog.h"
 #include "query.h"
+#include <cstring>
+#include <cstdlib>
 
 /*
- * Inserts a record into the specified relation.
- *
- * Returns:
- * 	OK on success
- * 	an error code otherwise
+ * QU_Insert inserts a record into the given relation using the attributes provided.
+ * It matches attribute names explicitly and converts string inputs to typed data.
  */
 
-const Status QU_Insert(
-	const string & relation, //The name of the relation (table) to insert into
-	const int attrCnt, //Number of attributes (columns) in the record
-	const attrInfo attrList[]) //Array of attribute information 
+const Status QU_Insert(const string &relation, 
+                       const int attrCnt, 
+                       const attrInfo attrList[]) 
 {
-    /*
-    Insert a tuple with the given attribute values (in attrList) in relation. The
-    value of the attribute is supplied in the attrValue member of the attrInfo
-    structure. Since the order of the attributes in attrList[] may not be the same as
-    in the relation, you might have to rearrange them before insertion. If no value is
-    specified for an attribute, you should reject the insertion as Minirel does not
-    implement NULLs.
-    */
-    
+    Status status = OK;
+
     RelDesc relDesc;
-    //check to see if a relation exists
-    Status status;
     status = relCat->getInfo(relation, relDesc);
-    if(status != OK)
-    {
+    if (status != OK)
         return status;
-    }
-    
-    // Get all attributes for this relation to determine record size
-    int attrCount;
-    AttrDesc *attrs;
-    status = attrCat->getRelInfo(relation, attrCount, attrs);
-    if(status != OK)
-    {
+
+    // get attribute info
+    int relAttrCnt;
+    AttrDesc* attrDescList;
+    status = attrCat->getRelInfo(relation, relAttrCnt, attrDescList);
+    if (status != OK)
         return status;
+
+    int recordLength = 0;
+    for (int i = 0; i < relAttrCnt; i++) {
+        recordLength += attrDescList[i].attrLen;
     }
-    
-    // check that we are given all attributes
-    bool allAttributesSpecified = true;
-    for(int i = 0; i < attrCount; i++)
-    {
-        bool attributeFound = false;
-        for(int j = 0; j < attrCnt; j++)
-        {
-            if(strcmp(attrs[i].attrName, attrList[j].attrName) == 0)
-            {
-                attributeFound = true;
+
+    // create new record and initialze
+    Record record;
+    record.length = recordLength;
+    record.data = new char[record.length];
+    if (!record.data) {
+        delete[] attrDescList;
+        return INSUFMEM;
+    }
+    memset(record.data, 0, record.length);
+
+    // match up the values by their names
+    for (int i = 0; i < relAttrCnt; i++) {
+        bool matched = false;
+        for (int j = 0; j < attrCnt; j++) {
+            if (strcmp(attrDescList[i].attrName, attrList[j].attrName) == 0) {
+                char* dest = (char*)record.data + attrDescList[i].attrOffset;
+
+                switch (attrDescList[i].attrType) {
+                    case INTEGER: {
+                        int val = atoi((char*)attrList[j].attrValue);
+                        memcpy(dest, &val, sizeof(int));
+                        break;
+                    }
+                    case FLOAT: {
+                        float val = atof((char*)attrList[j].attrValue);
+                        memcpy(dest, &val, sizeof(float));
+                        break;
+                    }
+                    case STRING: {
+                        strncpy(dest, (char*)attrList[j].attrValue, attrDescList[i].attrLen);
+                        dest[attrDescList[i].attrLen - 1] = '\0';  // Ensure null termination
+                        break;
+                    }
+                    default:
+                        delete[] attrDescList;
+                        delete[] (char*)record.data;
+                        return UNIXERR;
+                }
+                matched = true;
                 break;
             }
         }
-        if(!attributeFound)
-        {
-            allAttributesSpecified = false;
-            break;
-        }
     }
-    
-    if(!allAttributesSpecified)
-    {
-        delete[] attrs;
-        return ATTRTYPEMISMATCH; 
-    }
-    
-    //Create a new record 
-    Record record;
-	record.length = sizeof(relDesc);
-    record.data = new char[record.length];
-    if (!record.data) {
-        delete[] attrs;
-        return INSUFMEM;
-    }
-    
-	//set to 0
-    memset(record.data, 0, record.length);
-    
-    //Set the attributes from attrList
-    for(int i = 0; i < attrCnt; i++)
-    {
-        AttrDesc attribute;
-        status = attrCat->getInfo(relation, attrList[i].attrName, attribute);
-        
-        if (status != OK)
-        {
-            delete[] record.data;
-            delete[] attrs;
-            return status;
-        }
-        
-		//gets the right location to put it at bc of the attrOffset
-		char* destination = (char*)record.data + attribute.attrOffset;        
-        //Copy the attribute to our record
-        memcpy(destination, attrList[i].attrValue, attribute.attrLen);
-    }
-    
-    //Insert the record
-    RID rid;
-    InsertFileScan* ifs;
-    ifs = new InsertFileScan(relation, status);
-    
-    if(status != OK)
-    {
-		delete[] (char*)record.data;
-        delete[] attrs;
-        delete ifs;
+
+    // insert
+    InsertFileScan scan(relation, status);
+    if (status != OK) {
+        delete[] attrDescList;
+        delete[] (char*)record.data;
         return status;
     }
-    
-    status = ifs->insertRecord(record, rid);
-    
-    delete[] record.data;
-    delete[] attrs;
-    delete ifs;
-    
+
+    RID rid;
+    status = scan.insertRecord(record, rid);
+
+    delete[] attrDescList;
+    delete[] (char*)record.data;
     return status;
 }
-
