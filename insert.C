@@ -4,9 +4,12 @@
 #include <cstdlib>
 
 /*
- * QU_Insert inserts a record into the given relation using the attributes provided.
- * It matches attribute names explicitly and converts string inputs to typed data.
- */
+  * Inserts a record into the specified relation.
+  *
+  * Returns:
+  * 	OK on success
+  * 	an error code otherwise
+*/
 
 const Status QU_Insert(const string &relation, 
                        const int attrCnt, 
@@ -43,7 +46,6 @@ const Status QU_Insert(const string &relation,
 
     // match up the values by their names
     for (int i = 0; i < relAttrCnt; i++) {
-        bool matched = false;
         for (int j = 0; j < attrCnt; j++) {
             if (strcmp(attrDescList[i].attrName, attrList[j].attrName) == 0) {
                 char* dest = (char*)record.data + attrDescList[i].attrOffset;
@@ -69,7 +71,6 @@ const Status QU_Insert(const string &relation,
                         delete[] (char*)record.data;
                         return UNIXERR;
                 }
-                matched = true;
                 break;
             }
         }
