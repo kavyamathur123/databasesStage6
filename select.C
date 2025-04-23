@@ -1,3 +1,12 @@
+/*
+ * 
+ * By Masa Abboud (mabboud@wisc.edu), Kavya Mathur (kmathur3@wisc.edu), Marissa Pederson (mapederson4@wisc.edu)
+ *
+ *  This file contains the implementation of the QU_Select and ScanSelect functions.
+ *
+ *
+ */
+
 #include "catalog.h"
 #include "query.h"
 #include "stdio.h"
@@ -12,6 +21,13 @@ const Status ScanSelect(const string & result,
 			const char *filter,
 			const int reclen);
 
+
+/* 
+ * Selects records from the specified relation.
+ * Returns:
+ * 	OK on success
+ * 	an error code otherwise
+ */
 const Status QU_Select(const string & result, 
 		       const int projCnt, 
 		       const attrInfo projNames[], 
@@ -65,6 +81,13 @@ const Status QU_Select(const string & result,
 	return status;
 }
 
+/*
+ * Scans a relation and selects records that match a given filter.
+ * Projects specified attributes into a new result relation.
+ * Returns:
+ *  OK on success
+ *  an error code otherwise
+ */
 const Status ScanSelect(const string & result, 
 			const int projCnt, 
 			const AttrDesc projNames[],
