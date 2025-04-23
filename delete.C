@@ -26,61 +26,60 @@
  tuples using a filtered HeapFileScan.
  */
 const Status QU_Delete(const string & relation, 
-               const string & attrName, 
-               const Operator op,
-               const Datatype type, 
-               const char *attrValue)
+                       const string & attrName, 
+                       const Operator op,
+                       const Datatype type, 
+                       const char *attrValue)
 {
+    cout << "Doing QU_Delete" << endl;
 
-    // part 6
     Status status;
     AttrDesc attrDesc;
     RID rid;
 
-    //heap file creation
-    HeapFileScan* hfs;
-    hfs = new HeapFileScan(relation, status);
+    // Heap file scan setup
+    HeapFileScan* hfs = new HeapFileScan(relation, status);
     if (status != OK) {
         delete hfs;
         return status;
     }
 
-    //same process as scan?
-    status = attrCat->getInfo(relation, attrName, attrDesc);
+    // Unconditional delete (delete all)
+    if (attrName.empty()) {
+        status = hfs->startScan(0, 0, STRING, NULL, EQ);
+    } else {
+        status = attrCat->getInfo(relation, attrName, attrDesc);
+        if (status != OK) {
+            delete hfs;
+            return status;
+        }
+
+        const char* value = NULL;
+        int temporaryInt;
+        float temporaryFloat;
+
+        if (type == INTEGER) {
+            temporaryInt = atoi(attrValue);
+            value = (char*)&temporaryInt;
+        } else if (type == FLOAT) {
+            temporaryFloat = atof(attrValue);
+            value = (char*)&temporaryFloat;
+        } else if (type == STRING) {
+            value = attrValue;
+        }
+
+        status = hfs->startScan(attrDesc.attrOffset, attrDesc.attrLen,
+                                (Datatype)attrDesc.attrType, value, op);
+    }
+
     if (status != OK) {
         delete hfs;
         return status;
     }
 
-    const char* value = NULL;
-    int temporaryInt;
-    float temporaryFloat;
-
-    if (type == INTEGER) {
-        temporaryInt = atoi(attrValue);
-        value = (char*)&temporaryInt;
-        status = hfs->startScan(attrDesc.attrOffset, attrDesc.attrLen, INTEGER, value, op);
-    }
-    else if (type == FLOAT) {
-        temporaryFloat = atof(attrValue);
-        value = (char*)&temporaryFloat;
-        status = hfs->startScan(attrDesc.attrOffset, attrDesc.attrLen, FLOAT, value, op);
-    }
-    else if (type == STRING) {
-        value = attrValue;
-        status = hfs->startScan(attrDesc.attrOffset, attrDesc.attrLen, STRING, value, op);
-    }
-
-    //deletion/memory leak prevent
-    if (status != OK) {
-        delete hfs;
-        return status;
-    }
-
-    //actual deletion
+    // Perform deletion
     while ((status = hfs->scanNext(rid)) == OK) {
         status = hfs->deleteRecord();
-
         if (status != OK) {
             delete hfs;
             return status;
@@ -88,15 +87,15 @@ const Status QU_Delete(const string & relation,
     }
 
     if (status != FILEEOF) {
+        delete hfs;
         return status;
     }
 
-    //make sure finished reading file
     hfs->endScan();
     delete hfs;
     return OK;
-
 }
+
 
 
 
