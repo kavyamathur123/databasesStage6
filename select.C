@@ -124,11 +124,11 @@ const Status ScanSelect(const string & result,
 	// Conditional or unconditional scan
 	if (attrDesc != NULL) {
 		if (attrDesc->attrType == INTEGER) {
-			int value = atoi(filter);
-			status = hfs->startScan(attrDesc->attrOffset, attrDesc->attrLen, INTEGER, (char*)&value, op);
+			*((int*) filter) = atoi(filter);
+			status = hfs->startScan(attrDesc->attrOffset, attrDesc->attrLen, INTEGER, filter, op);
 		} else if (attrDesc->attrType == FLOAT) {
-			float value = atof(filter);
-			status = hfs->startScan(attrDesc->attrOffset, attrDesc->attrLen, FLOAT, (char*)&value, op);
+			*((float*) filter) = atof(filter);
+			status = hfs->startScan(attrDesc->attrOffset, attrDesc->attrLen, FLOAT, filter, op);
 		} else if (attrDesc->attrType == STRING) {
 			status = hfs->startScan(attrDesc->attrOffset, attrDesc->attrLen, STRING, filter, op);
 		} else {
