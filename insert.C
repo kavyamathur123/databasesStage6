@@ -1,3 +1,11 @@
+/*
+ *   By Masa Abboud (mabboud@wisc.edu), Kavya Mathur (Kmathur3@wisc.edu), Marissa Pederson (mapederson4@wisc.edu)
+ *
+ *  This file contains the implementation of the QU_Insert function.
+ *  It inserts a new record into the specified relation
+ *
+ */
+
 #include "catalog.h"
 #include "query.h"
 #include <cstring>
