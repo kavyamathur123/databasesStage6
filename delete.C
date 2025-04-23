@@ -1,3 +1,12 @@
+/*
+ *
+ *  By Masa Abboud (mabboud@wisc.edu), Kavya Mathur (kmathur3@wisc.edu), Marissa Pederson (mapederson4@wisc.edu)
+ *
+ *  This file contains the implementation of the QU_Delete function.
+ *  It deletes all records from a specified relation that satisfy a given condition.
+ * 
+ */
+
 #include "catalog.h"
 #include "query.h"
 
